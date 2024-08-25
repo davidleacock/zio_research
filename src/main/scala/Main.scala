@@ -1,9 +1,8 @@
-object Main {
+import http._
+import zio._
 
-  def main(args: Array[String]): Unit = {
+object Main extends ZIOAppDefault {
 
-
-    println("running...")
-  }
-
+  override def run =
+    UserServer.server
 }
