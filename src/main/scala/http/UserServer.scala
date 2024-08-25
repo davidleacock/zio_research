@@ -10,7 +10,7 @@ object UserServer {
 
   private def routes: Routes[UserRepository, Response] =
     Routes(
-      Method.GET / "test" -> handler(Response.text("test worked")),
+      Method.GET / "test" -> handler(Response.text("test worked.")),
 
       // TODO: Test this endpoint
       Method.POST / "users" -> handler { (req: Request) =>
