@@ -1,7 +1,7 @@
 package http
 
 import domain.User
-import repo.{InMemoryUserRepository, UserRepository}
+import repo.UserRepository
 import zio._
 import zio.http._
 import zio.schema.codec.JsonCodec.schemaBasedBinaryCodec
@@ -26,7 +26,6 @@ object UserServer {
       }
     )
 
-  // TODO: Need a way to inject the server with the repo when I need and not use hardcoded inmem
-  val server: ZIO[Any, Throwable, Nothing] =
-    Server.serve(routes).provide(Server.defaultWithPort(8080), InMemoryUserRepository.layer)
+  val server: ZIO[UserRepository with Server, Throwable, Nothing] =
+    Server.serve(routes)
 }

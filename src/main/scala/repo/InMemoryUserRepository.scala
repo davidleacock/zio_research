@@ -3,7 +3,7 @@ package repo
 import domain.User
 import zio._
 
-class InMemoryUserRepository(ref: Ref[Map[String, User]]) extends UserRepository {
+private class InMemoryUserRepository(ref: Ref[Map[String, User]]) extends UserRepository {
 
   override def create(user: User): ZIO[Any, Throwable, Unit] =
     ref.update(_ + (user.id -> user)).unit
