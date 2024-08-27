@@ -6,7 +6,7 @@ import zio.kafka.consumer.{Consumer, Subscription}
 import zio.kafka.serde.Serde
 import zio.stream.ZStream
 
-case class KafkaUserConsumerImpl(consumer: Consumer) extends UserConsumer {
+case class KafkaIngressUserConsumerImpl(consumer: Consumer) extends IngressUserConsumer {
 
   // TODO - Currently this will just log whatever we consume, but we need to do something with the User
 //  override def consume: ZStream[Any, Throwable, User] = {
@@ -44,6 +44,6 @@ case class KafkaUserConsumerImpl(consumer: Consumer) extends UserConsumer {
       )
     )
  */
-object KafkaUserConsumerImpl {
-  val layer: ZLayer[Consumer, Throwable, UserConsumer] = ZLayer.fromFunction(consumer => KafkaUserConsumerImpl(consumer))
+object KafkaIngressUserConsumerImpl {
+  val layer: ZLayer[Consumer, Throwable, IngressUserConsumer] = ZLayer.fromFunction(consumer => KafkaIngressUserConsumerImpl(consumer))
 }
