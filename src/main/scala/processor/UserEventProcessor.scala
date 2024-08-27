@@ -1,19 +1,24 @@
 package processor
 
-import consumer.UserConsumer
+import consumer.IngressUserConsumer
+import domain.UserError
+import domain.UserError.{ConsumerError, PersistenceError}
 import repo.UserRepository
 import zio._
 
 object UserEventProcessor {
 
-  // TODO - How does this handle errors?
-  def processStream: ZIO[UserConsumer with UserRepository, Throwable, Unit] = {
+  def processStream: ZIO[IngressUserConsumer with UserRepository, UserError, Unit] =
     for {
-      consumer <- ZIO.service[UserConsumer]
+      consumer <- ZIO.service[IngressUserConsumer]
       repo <- ZIO.service[UserRepository]
-      _ <- consumer.consume.mapZIO { user =>
-        repo.create(user).tapError(err => Console.printLine(s"Failed to persist user: $err"))
-      }.runDrain
+      _ <- consumer
+        .consume
+        .mapError(err => ConsumerError(err))
+        .mapZIO { user =>
+          repo.create(user)
+            .mapError(err => PersistenceError(err.getMessage))
+        }
+        .runDrain
     } yield ()
-  }
 }
