@@ -11,4 +11,10 @@ object User {
   implicit val schemer: Schema[User] = DeriveSchema.gen[User]
 }
 
+sealed trait UserError extends Throwable
+object UserError {
+  case class InvalidDataError(message: String) extends UserError
+  case class PersistenceError(message: String) extends UserError
+  case class ConsumerError(cause: Throwable) extends UserError
+}
 
