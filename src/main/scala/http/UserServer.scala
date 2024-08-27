@@ -46,6 +46,8 @@ object UserServer {
       Method.GET / "test" -> handler(Response.text("HTTP Server online..."))
     )
 
+  // TODO - Do I need to make a layer builder here or something? So I return a Server rather than this runnable
+
   val server: ZIO[UserRepository with Server, Throwable, Nothing] =
     Server.serve(routes)
 }

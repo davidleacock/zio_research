@@ -13,6 +13,7 @@ object UserEventProcessorSpec extends ZIOSpecDefault {
     override def consume: ZStream[Any, Throwable, User] = ZStream.fromIterable(users)
   }
 
+  // TODO fix InMemoryRepo so I can use that, fix constructor I think?
   class MockUserRepository(ref: Ref[List[User]]) extends UserRepository {
     def create(user: User): ZIO[Any, Throwable, Unit] = ref.update(_ :+ user)
     def get(id: String): ZIO[Any, Throwable, Option[User]] = ref.get.map(_.find(_.id == id))
@@ -32,5 +33,8 @@ object UserEventProcessorSpec extends ZIOSpecDefault {
           users <- ref.get
         } yield assertTrue(users == data)
       }
+
+      // TODO add error case
+
     )
 }

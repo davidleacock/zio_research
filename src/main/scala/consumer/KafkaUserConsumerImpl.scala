@@ -19,6 +19,8 @@ case class KafkaUserConsumerImpl(consumer: Consumer) extends UserConsumer {
 //      .drain
 //  }
 
+  // TODO need to test this with a Kafka Container
+
   // TODO do I need the additional explicit drain and offset commits? Does it happen by default?
   override def consume: ZStream[Any, Throwable, User] = {
     consumer

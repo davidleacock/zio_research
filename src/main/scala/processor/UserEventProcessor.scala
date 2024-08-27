@@ -6,6 +6,7 @@ import zio._
 
 object UserEventProcessor {
 
+  // TODO - How does this handle errors?
   def processStream: ZIO[UserConsumer with UserRepository, Throwable, Unit] = {
     for {
       consumer <- ZIO.service[UserConsumer]
