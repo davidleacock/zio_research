@@ -16,8 +16,8 @@ private class InMemoryUserRepository(ref: Ref[Map[String, User]]) extends UserRe
 }
 
 object InMemoryUserRepository {
-  def layer: ULayer[UserRepository] =
+  def layer(data: Map[String, User]): ULayer[UserRepository] =
     ZLayer.fromZIO(
-      Ref.make(Map.empty[String, User]).map(ref => new InMemoryUserRepository(ref))
+      Ref.make(data).map(ref => new InMemoryUserRepository(ref))
     )
 }
