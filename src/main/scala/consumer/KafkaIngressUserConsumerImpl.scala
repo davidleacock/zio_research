@@ -2,7 +2,7 @@ package consumer
 
 import domain.User
 import zio._
-import zio.kafka.consumer.{Consumer, Subscription}
+import zio.kafka.consumer.{Consumer, ConsumerSettings, Subscription}
 import zio.kafka.serde.Serde
 import zio.stream.ZStream
 
@@ -22,6 +22,7 @@ case class KafkaIngressUserConsumerImpl(consumer: Consumer) extends IngressUserC
   // TODO need to test this with a Kafka Container
 
   // TODO do I need the additional explicit drain and offset commits? Does it happen by default?
+  // TODO how do I pass in the topic information?
   override def consume: ZStream[Any, Throwable, User] = {
     consumer
       .plainStream(Subscription.topics("not-yet-made"), Serde.string, Serde.string)
@@ -45,5 +46,9 @@ case class KafkaIngressUserConsumerImpl(consumer: Consumer) extends IngressUserC
     )
  */
 object KafkaIngressUserConsumerImpl {
-  val layer: ZLayer[Consumer, Throwable, IngressUserConsumer] = ZLayer.fromFunction(consumer => KafkaIngressUserConsumerImpl(consumer))
+  def layer(settings: ConsumerSettings): ZLayer[Consumer, Throwable, IngressUserConsumer] = {
+    // TODO wtf is Scoped?
+    val consumerLayer = ZLayer.scoped(Consumer.make(settings))
+    consumerLayer >>> ZLayer.fromFunction(consumer => KafkaIngressUserConsumerImpl(consumer))
+  }
 }

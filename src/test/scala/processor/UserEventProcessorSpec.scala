@@ -1,8 +1,8 @@
 package processor
 
 import consumer.IngressUserConsumer
+import domain.User
 import domain.UserError.PersistenceError
-import domain.{User, UserError}
 import repo.UserRepository
 import zio._
 import zio.stream.ZStream
@@ -16,7 +16,7 @@ object UserEventProcessorSpec extends ZIOSpecDefault {
   }
 
   // TODO fix InMemoryRepo so I can use that, fix constructor I think?
-  // If I want to use InMemory then I need to pass in a ref, rather than a map
+  // TODO If I want to use InMemory then I need to pass in a ref, rather than a map
   class MockUserRepository(ref: Ref[List[User]]) extends UserRepository {
     def create(user: User): ZIO[Any, Throwable, Unit] =
       if (user.name.isBlank || user.id.isBlank) {
@@ -32,17 +32,17 @@ object UserEventProcessorSpec extends ZIOSpecDefault {
 
   override def spec: Spec[TestEnvironment with Scope, Any] =
     suite("UserEventProcessorSpec")(
-
       test("Processor stream consumes valid Users and persists in repo.") {
         for {
           ref <- Ref.make(List.empty[User])
           repo = new MockUserRepository(ref)
           consumers = new MockIngressUserConsumer(data)
-          _ <- UserEventProcessor.processStream.provideLayer(ZLayer.succeed(consumers) ++ ZLayer.succeed(repo))
+          _ <- UserEventProcessor
+            .processStream
+            .provideLayer(ZLayer.succeed(consumers) ++ ZLayer.succeed(repo))
           users <- ref.get
         } yield assertTrue(users == data)
       },
-
       test("Processor stream handles invalid Users with error.") {
         for {
           ref <- Ref.make(List.empty[User])
@@ -54,7 +54,5 @@ object UserEventProcessorSpec extends ZIOSpecDefault {
             .either
         } yield assert(result)(isLeft(equalTo(PersistenceError("Name and/or Id is blank."))))
       }
-
-
     )
 }
