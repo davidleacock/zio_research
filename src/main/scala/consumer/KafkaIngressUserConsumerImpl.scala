@@ -22,6 +22,7 @@ case class KafkaIngressUserConsumerImpl(consumer: Consumer) extends IngressUserC
           .fromEither(zio.json.JsonDecoder[User].decodeJson(record.value))
           .mapError(err => new RuntimeException(s"Failed to decode user: $err"))
       }
+      .tapError(err => Console.printLine(s"stream error ${err}"))
 }
 
 object KafkaIngressUserConsumerImpl {

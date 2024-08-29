@@ -2,6 +2,7 @@ package consumer
 
 import com.dimafeng.testcontainers.KafkaContainer
 import domain.User
+import org.apache.kafka.clients.producer.RecordMetadata
 import zio.kafka.consumer.{Consumer, ConsumerSettings}
 import zio._
 import zio.test._
@@ -24,8 +25,8 @@ object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
         kafka <- ZIO.service[KafkaContainer]
         brokerUrl = kafka.bootstrapServers
         consumerSettings = ConsumerSettings(List(brokerUrl))
-          .withGroupId("test-group")
-          .withClientId("test-client")
+          .withGroupId("test-group-1")
+          .withClientId("test-client-1")
         consumer <- Consumer.make(consumerSettings)
       } yield consumer
     }
@@ -52,7 +53,14 @@ object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
               props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
 
               val producer = new KafkaProducer[String, String](props)
-              producer.send(new ProducerRecord[String, String]("user-events", "key", """{"id": "1", "name": "Alice"}"""))
+              producer.send(new ProducerRecord[String, String]("user-events", "key", """{"id": "1", "name": "Alice"}"""),
+                (metadata: RecordMetadata, exception: Exception) => {
+                  if (exception != null) {
+                    println(s"Error sending message ${exception.getMessage}")
+                  } else {
+                    println(s"Message sent to topic ${metadata.topic()}, partition ${metadata.partition()}, offset ${metadata.offset()}")
+                  }
+                })
               producer.close()
             }
 
@@ -61,7 +69,7 @@ object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
               .build
               .flatMap { env =>
                 env.get[IngressUserConsumer].consume.take(1).runCollect
-              }
+              }.tapBoth(err => Console.printLine(s"Error in stream ${err.getMessage}"), result => Console.printLine(s"Stream result $result"))
           } yield assertTrue(result == Chunk(User("1", "Aasdasdlice")))
         }
       }.provideLayerShared(
