@@ -13,21 +13,37 @@ case class KafkaIngressUserConsumerImpl(consumer: Consumer) extends IngressUserC
 
   // TODO do I need the additional explicit drain and offset commits? Does it happen by default?
   // TODO how do I pass in the topic information?
-  override def consume: ZStream[Any, Throwable, User] =
+  override def consume: ZStream[Any, Throwable, User] = {
+    println("Consume")
     consumer
       .plainStream(Subscription.topics("user-events"), Serde.string, Serde.string)
       .tap(e => Console.printLine(s"Got a record.... ${e.value}"))
       .mapZIO { record =>
+        Console.printLine("mapZio...") *>
         ZIO
           .fromEither(zio.json.JsonDecoder[User].decodeJson(record.value))
           .mapError(err => new RuntimeException(s"Failed to decode user: $err"))
       }
       .tapError(err => Console.printLine(s"stream error ${err}"))
+      .drain
+  }
+
+  def consume2: ZStream[Consumer, Throwable, User] = {
+    println("Consume2")
+    consumer
+      .plainStream(Subscription.topics("user-events"), Serde.string, Serde.string)
+      .tap(e => Console.printLine(s"Got a record.... ${e.value}"))
+      .mapZIO { record =>
+        Console.printLine("mapZio...") *>
+          ZIO
+            .fromEither(zio.json.JsonDecoder[User].decodeJson(record.value))
+            .mapError(err => new RuntimeException(s"Failed to decode user: $err"))
+      }
+      .tapError(err => Console.printLine(s"stream error ${err}"))
+  }
 }
 
 object KafkaIngressUserConsumerImpl {
-  def layer(settings: ConsumerSettings): ZLayer[Consumer, Throwable, IngressUserConsumer] =
-    // TODO wtf is Scoped?
-    ZLayer.scoped(Consumer.make(settings)) >>>
-      ZLayer.fromFunction(consumer => KafkaIngressUserConsumerImpl(consumer))
+  def layer: ZLayer[Consumer, Throwable, IngressUserConsumer] =
+      ZLayer.fromFunction(KafkaIngressUserConsumerImpl.apply _).tap(x => Console.printLine(s"... ${x.toString()}"))
 }

@@ -5,6 +5,7 @@ import domain.User
 import domain.UserError.PersistenceError
 import repo.UserRepository
 import zio._
+import zio.kafka.consumer.Consumer
 import zio.stream.ZStream
 import zio.test.Assertion._
 import zio.test._
@@ -13,6 +14,8 @@ object UserEventProcessorSpec extends ZIOSpecDefault {
 
   class MockIngressUserConsumer(users: List[User]) extends IngressUserConsumer {
     override def consume: ZStream[Any, Throwable, User] = ZStream.fromIterable(users)
+
+    override def consume2: ZStream[Consumer, Throwable, User] = ZStream.fromIterable(users)
   }
 
   // TODO fix InMemoryRepo so I can use that, fix constructor I think?
