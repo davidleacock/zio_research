@@ -1,14 +1,10 @@
 package consumer
 
 import domain.User
-import zio.kafka.consumer.Consumer
 import zio.stream.ZStream
 
 trait IngressUserConsumer {
   def consume: ZStream[Any, Throwable, User]
-
-  def consume2: ZStream[Consumer, Throwable, User]
-
 }
 
 //// TODO? How do I think about this object method, how does it differ from the InMem repo?
