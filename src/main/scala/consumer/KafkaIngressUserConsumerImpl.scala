@@ -8,7 +8,6 @@ import zio.stream.ZStream
 
 case class KafkaIngressUserConsumerImpl(consumer: Consumer) extends IngressUserConsumer {
 
-  // TODO user my own serialization
   // TODO Throw custom error?
   override def consume: ZStream[Any, Throwable, User] =
     consumer
@@ -16,7 +15,7 @@ case class KafkaIngressUserConsumerImpl(consumer: Consumer) extends IngressUserC
       .tap(e => Console.printLine(s"Received record: ${e.value}"))
       .mapZIO { record =>
         ZIO
-          .fromEither(zio.json.JsonDecoder[User].decodeJson(record.value))
+          .fromEither(User.decoder.decodeJson(record.value))
           .mapError(err => new RuntimeException(s"Failed to decode user: $err"))
       }
       .tapError(err => Console.printLine(s"Stream error: $err"))
