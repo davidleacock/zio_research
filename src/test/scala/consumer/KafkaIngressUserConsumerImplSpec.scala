@@ -2,13 +2,12 @@ package consumer
 
 import com.dimafeng.testcontainers.KafkaContainer
 import domain.User
-import org.apache.kafka.clients.producer.RecordMetadata
-import zio.kafka.consumer.{Consumer, ConsumerSettings}
-import zio._
+import zio.{Scope, _}
 import zio.kafka.consumer.Consumer.AutoOffsetStrategy
 import zio.kafka.consumer.Consumer.OffsetRetrieval.Auto
+import zio.kafka.consumer.{Consumer, ConsumerSettings}
+import zio.test.Assertion._
 import zio.test._
-import zio.{Scope, _}
 
 object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
 
@@ -27,24 +26,21 @@ object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
         kafka <- ZIO.service[KafkaContainer]
         brokerUrl = kafka.bootstrapServers
         consumerSettings = ConsumerSettings(List(brokerUrl))
-          .withOffsetRetrieval(Auto(AutoOffsetStrategy. Earliest))
-          .withGroupId("test-group-1")
-          .withClientId("test-client-1")
-        consumer <- Consumer.make(consumerSettings).tap(x => Console.printLine(s"consumerLayer: ${x.toString}"))
+          .withOffsetRetrieval(Auto(AutoOffsetStrategy.Earliest))
+          .withGroupId("test-group")
+          .withClientId("test-client")
+        consumer <- Consumer.make(consumerSettings)
       } yield consumer
     }
 
   override def spec: Spec[TestEnvironment with Scope, Any] =
     suite("KafkaIngressUserConsumerImpl")(
-      test("Ingress consumer will consume user-event data") {
+      test("Ingress consumer will consume data from user-event topic and create User") {
         ZIO.scoped {
           for {
             kafka <- ZIO.service[KafkaContainer]
 
             brokerUrl = kafka.bootstrapServers
-            consumerSettings = ConsumerSettings(List(brokerUrl))
-              .withGroupId("test-group")
-              .withClientId("test-client")
 
             _ <- ZIO.succeed {
               import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
@@ -56,15 +52,7 @@ object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
               props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
 
               val producer = new KafkaProducer[String, String](props)
-              producer.send(
-                new ProducerRecord[String, String]("user-events", "key", """{"id": "1", "name": "Alice"}"""),
-                (metadata: RecordMetadata, exception: Exception) =>
-                  if (exception != null) {
-                    println(s"Error sending message ${exception.getMessage}")
-                  } else {
-                    println(s"Message sent to topic ${metadata.topic()}, partition ${metadata.partition()}, offset ${metadata.offset()}")
-                  }
-              )
+              producer.send(new ProducerRecord[String, String]("user-events", "key", """{"id": "1", "name": "Alice"}"""))
               producer.close()
             }
 
@@ -72,26 +60,53 @@ object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
               .layer
               .build
               .flatMap { env =>
-
-
-                Console.printLine("Starting IngressUserConsumer") *>
-                  env
-                    .get[IngressUserConsumer]
-                    .consume2
-                    .tap(x => Console.printLine(s"got ${x.name}"))
-                    .take(1)
-                    .tap(x => Console.printLine(s"got ${x.name}"))
-                    .runCollect
-
+                env
+                  .get[IngressUserConsumer]
+                  .consume
+                  .take(1)
+                  .runCollect
               }
-              .tapBoth(
-                err => Console.printLine(s"Error in stream ${err.getMessage}"),
-                result => Console.printLine(s"Stream result $result")
-              )
           } yield assertTrue(result == Chunk(User("1", "Alice")))
         }
-      }.provideLayer(
-        kafkaContainerLayer >>> (consumerLayer ++ ZLayer.service[KafkaContainer])
-      )
+      },
+      test("Ingress consumer will consume invalid data from user-event topic and return Error") {
+        ZIO.scoped {
+          for {
+            kafka <- ZIO.service[KafkaContainer]
+
+            brokerUrl = kafka.bootstrapServers
+
+            _ <- ZIO.succeed {
+              import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
+
+              import java.util.Properties
+              val props = new Properties()
+              props.put("bootstrap.servers", brokerUrl)
+              props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+              props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+
+              val producer = new KafkaProducer[String, String](props)
+              producer.send(new ProducerRecord[String, String]("user-events", "key", """{"bad": "data"}"""))
+              producer.close()
+            }
+
+            result <- KafkaIngressUserConsumerImpl
+              .layer
+              .build
+              .flatMap { env =>
+                env
+                  .get[IngressUserConsumer]
+                  .consume
+                  .take(1)
+                  .runCollect
+                  .either
+              }
+          } yield assert(result)(
+            isLeft(hasField("message", _.getMessage, containsString("Failed to decode user: .id(missing)")))
+          )
+        }
+      }
+    ).provideLayer(
+      kafkaContainerLayer >>> (consumerLayer ++ ZLayer.service[KafkaContainer])
     )
 }
