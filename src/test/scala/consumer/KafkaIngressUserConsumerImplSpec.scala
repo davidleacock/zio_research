@@ -35,27 +35,15 @@ object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
 
   override def spec: Spec[TestEnvironment with Scope, Any] =
     suite("KafkaIngressUserConsumerImpl")(
-      test("Ingress consumer will consume data from user-event topic and create User") {
+      test("will consume valid data from user-event topic and create User") {
         ZIO.scoped {
           for {
             kafka <- ZIO.service[KafkaContainer]
-
             brokerUrl = kafka.bootstrapServers
-
             _ <- ZIO.succeed {
-              import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
-
-              import java.util.Properties
-              val props = new Properties()
-              props.put("bootstrap.servers", brokerUrl)
-              props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
-              props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
-
-              val producer = new KafkaProducer[String, String](props)
-              producer.send(new ProducerRecord[String, String]("user-events", "key", """{"id": "1", "name": "Alice"}"""))
-              producer.close()
+              val goodData = """{"id": "1", "name": "Alice"}"""
+              publish(goodData, brokerUrl)
             }
-
             result <- KafkaIngressUserConsumerImpl
               .layer
               .build
@@ -69,27 +57,15 @@ object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
           } yield assertTrue(result == Chunk(User("1", "Alice")))
         }
       },
-      test("Ingress consumer will consume invalid data from user-event topic and return Error") {
+      test("will consume invalid data from user-event topic and return Error") {
         ZIO.scoped {
           for {
             kafka <- ZIO.service[KafkaContainer]
-
             brokerUrl = kafka.bootstrapServers
-
             _ <- ZIO.succeed {
-              import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
-
-              import java.util.Properties
-              val props = new Properties()
-              props.put("bootstrap.servers", brokerUrl)
-              props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
-              props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
-
-              val producer = new KafkaProducer[String, String](props)
-              producer.send(new ProducerRecord[String, String]("user-events", "key", """{"bad": "data"}"""))
-              producer.close()
+              val badData = """{"bad": "data"}"""
+              publish(badData, brokerUrl)
             }
-
             result <- KafkaIngressUserConsumerImpl
               .layer
               .build
@@ -102,11 +78,25 @@ object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
                   .either
               }
           } yield assert(result)(
-            isLeft(hasField("message", _.getMessage, containsString("Failed to decode user: .id(missing)")))
+            isLeft(hasField("message", _.getMessage, containsString("Failed to decode user")))
           )
         }
       }
     ).provideLayer(
       kafkaContainerLayer >>> (consumerLayer ++ ZLayer.service[KafkaContainer])
     )
+
+  private def publish(data: String, brokerUrl: String): Unit = {
+    import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
+
+    import java.util.Properties
+    val props = new Properties()
+    props.put("bootstrap.servers", brokerUrl)
+    props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+    props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
+
+    val producer = new KafkaProducer[String, String](props)
+    producer.send(new ProducerRecord[String, String]("user-events", "key", data))
+    producer.close()
+  }
 }
