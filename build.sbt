@@ -14,6 +14,9 @@ lazy val root = (project in file("."))
       "dev.zio" %% "zio-test" % "2.1.8" % Test,
       "dev.zio" %% "zio-direct" % "1.0.0-RC7",
       "dev.zio" %% "zio-test-sbt" % "2.1.6" % Test,
+      "dev.zio" %% "zio-schema"          % "1.4.1",
+      "dev.zio" %% "zio-sql-postgres" % "0.1.2",
+      "org.postgresql" % "postgresql" % "42.7.3",
       "com.dimafeng" %% "testcontainers-scala-kafka" % "0.41.4" % Test
     )
   )
