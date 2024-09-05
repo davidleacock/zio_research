@@ -1,11 +1,10 @@
-package repo.postgres.quill
+package repo.postgres
 
 import domain.User
-import io.getquill.jdbczio.Quill
 import io.getquill._
+import io.getquill.jdbczio.Quill
 import repo.UserRepository
 import zio._
-import zio.Console.printLine
 
 import java.sql.SQLException
 
