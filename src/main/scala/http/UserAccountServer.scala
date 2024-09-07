@@ -1,18 +1,17 @@
 package http
 
-import domain.User
-import repo.UserRepository
+import domain.UserAccount
+import repo.UserAccountRepository
 import zio._
 import zio.http._
-import zio.schema.codec.JsonCodec.schemaBasedBinaryCodec
 
-object UserServer {
+object UserAccountServer {
 
-  private def routes: Routes[UserRepository, Response] =
+  private def routes: Routes[UserAccountRepository, Response] =
     Routes(
       Method.GET / "users" / string("id") -> handler { (id: String, _: Request) =>
         ZIO
-          .serviceWithZIO[UserRepository](_.get(id))
+          .serviceWithZIO[UserAccountRepository](_.get(id))
           .mapBoth(
             err => Response.internalServerError(s"Problem ${err.getMessage}"),
             {
@@ -23,7 +22,7 @@ object UserServer {
       },
       Method.GET / "users" -> handler { (_: Request) =>
         ZIO
-          .serviceWithZIO[UserRepository](_.list())
+          .serviceWithZIO[UserAccountRepository](_.list())
           .mapBoth(
             err => Response.internalServerError(s"Problem ${err.getMessage}"),
             users => {
@@ -34,9 +33,9 @@ object UserServer {
       },
       Method.POST / "users" -> handler { (req: Request) =>
         for {
-          user <- req.body.to[User].orElseFail(Response.badRequest)
+          user <- req.body.to[UserAccount].orElseFail(Response.badRequest)
           response <- ZIO
-            .serviceWithZIO[UserRepository](_.create(user))
+            .serviceWithZIO[UserAccountRepository](_.create(user))
             .mapBoth(
               err => Response.internalServerError(s"Problem ${err.getMessage}"),
               user => Response.text(user.toString)
@@ -47,7 +46,6 @@ object UserServer {
     )
 
   // TODO - Do I need to make a layer builder here or something? So I return a Server rather than this runnable
-
-  val server: ZIO[UserRepository with Server, Throwable, Nothing] =
+  val server: ZIO[UserAccountRepository with Server, Throwable, Nothing] =
     Server.serve(routes)
 }

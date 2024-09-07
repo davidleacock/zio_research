@@ -1,27 +1,28 @@
-package consumer
+package consumer.impl
 
-import domain.User
+import consumer.IngressUserAccountConsumer
+import domain.UserAccount
 import zio._
 import zio.kafka.consumer.{Consumer, Subscription}
 import zio.kafka.serde.Serde
 import zio.stream.ZStream
 
-case class KafkaIngressUserConsumerImpl(consumer: Consumer) extends IngressUserConsumer {
+case class KafkaIngressUserAccountConsumerImpl(consumer: Consumer) extends IngressUserAccountConsumer {
 
   // TODO Throw custom error?
-  override def consume: ZStream[Any, Throwable, User] =
+  override def consume: ZStream[Any, Throwable, UserAccount] =
     consumer
       .plainStream(Subscription.topics("user-events"), Serde.string, Serde.string)
       .tap(e => Console.printLine(s"Received record: ${e.value}"))
       .mapZIO { record =>
         ZIO
-          .fromEither(User.decoder.decodeJson(record.value))
+          .fromEither(UserAccount.decoder.decodeJson(record.value))
           .mapError(err => new RuntimeException(s"Failed to decode user: $err"))
       }
       .tapError(err => Console.printLine(s"Stream error: $err"))
 }
 
-object KafkaIngressUserConsumerImpl {
-  def layer: ZLayer[Consumer, Throwable, IngressUserConsumer] =
-    ZLayer.fromFunction(KafkaIngressUserConsumerImpl.apply _)
+object KafkaIngressUserAccountConsumerImpl {
+  def layer: ZLayer[Consumer, Throwable, IngressUserAccountConsumer] =
+    ZLayer.fromFunction(KafkaIngressUserAccountConsumerImpl.apply _)
 }
