@@ -1,15 +1,16 @@
 package consumer
 
 import com.dimafeng.testcontainers.KafkaContainer
-import domain.User
-import zio.{Scope, _}
+import consumer.impl.KafkaIngressUserAccountConsumerImpl
+import domain.UserAccount
+import zio._
 import zio.kafka.consumer.Consumer.AutoOffsetStrategy
 import zio.kafka.consumer.Consumer.OffsetRetrieval.Auto
 import zio.kafka.consumer.{Consumer, ConsumerSettings}
 import zio.test.Assertion._
 import zio.test._
 
-object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
+object KafkaIngressUserAccountConsumerImplSpec extends ZIOSpecDefault {
 
   val kafkaContainerLayer: ZLayer[Any, Throwable, KafkaContainer] =
     ZLayer.scoped {
@@ -34,7 +35,7 @@ object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
     }
 
   override def spec: Spec[TestEnvironment with Scope, Any] =
-    suite("KafkaIngressUserConsumerImpl")(
+    suite("KafkaIngressUserAccountConsumerImpl")(
       test("will consume valid data from user-event topic and create User") {
         ZIO.scoped {
           for {
@@ -44,17 +45,17 @@ object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
               val goodData = """{"id": "1", "name": "Alice"}"""
               publish(goodData, brokerUrl)
             }
-            result <- KafkaIngressUserConsumerImpl
+            result <- KafkaIngressUserAccountConsumerImpl
               .layer
               .build
               .flatMap { env =>
                 env
-                  .get[IngressUserConsumer]
+                  .get[IngressUserAccountConsumer]
                   .consume
                   .take(1)
                   .runCollect
               }
-          } yield assertTrue(result == Chunk(User("1", "Alice")))
+          } yield assertTrue(result == Chunk(UserAccount("1", "Alice")))
         }
       },
       test("will consume invalid data from user-event topic and return Error") {
@@ -66,12 +67,12 @@ object KafkaIngressUserConsumerImplSpec extends ZIOSpecDefault {
               val badData = """{"bad": "data"}"""
               publish(badData, brokerUrl)
             }
-            result <- KafkaIngressUserConsumerImpl
+            result <- KafkaIngressUserAccountConsumerImpl
               .layer
               .build
               .flatMap { env =>
                 env
-                  .get[IngressUserConsumer]
+                  .get[IngressUserAccountConsumer]
                   .consume
                   .take(1)
                   .runCollect

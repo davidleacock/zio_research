@@ -1,42 +1,42 @@
 package processor
 
-import consumer.IngressUserConsumer
-import domain.User
+import consumer.IngressUserAccountConsumer
+import domain.UserAccount
 import domain.UserError.PersistenceError
-import repo.UserRepository
+import repo.UserAccountRepository
 import zio._
 import zio.stream.ZStream
 import zio.test.Assertion._
 import zio.test._
 
-object UserEventProcessorSpec extends ZIOSpecDefault {
+object UserAccountEventProcessorSpec extends ZIOSpecDefault {
 
-  class MockIngressUserConsumer(users: List[User]) extends IngressUserConsumer {
-    override def consume: ZStream[Any, Throwable, User] = ZStream.fromIterable(users)
+  class MockIngressUserAccountConsumer(users: List[UserAccount]) extends IngressUserAccountConsumer {
+    override def consume: ZStream[Any, Throwable, UserAccount] = ZStream.fromIterable(users)
   }
 
   // TODO fix InMemoryRepo so I can use that, fix constructor I think?
   // TODO If I want to use InMemory then I need to pass in a ref, rather than a map
-  class MockUserRepository(ref: Ref[List[User]]) extends UserRepository {
-    def create(user: User): ZIO[Any, Throwable, Unit] =
+  class MockUserAccountRepository(ref: Ref[List[UserAccount]]) extends UserAccountRepository {
+    def create(user: UserAccount): ZIO[Any, Throwable, Unit] =
       if (user.name.isBlank || user.id.isBlank) {
         ZIO.fail(new RuntimeException("Name and/or Id is blank."))
       } else ref.update(_ :+ user)
-    def get(id: String): ZIO[Any, Throwable, Option[User]] = ref.get.map(_.find(_.id == id))
-    def list(): ZIO[Any, Throwable, List[User]] = ref.get
+    def get(id: String): ZIO[Any, Throwable, Option[UserAccount]] = ref.get.map(_.find(_.id == id))
+    def list(): ZIO[Any, Throwable, List[UserAccount]] = ref.get
   }
 
-  val data: List[User] = List(User("1", "Alice"), User("2", "Bob"))
+  val data: List[UserAccount] = List(UserAccount("1", "Alice"), UserAccount("2", "Bob"))
 
-  val badData: List[User] = List(User("1", ""))
+  val badData: List[UserAccount] = List(UserAccount("1", ""))
 
   override def spec: Spec[TestEnvironment with Scope, Any] =
     suite("UserEventProcessorSpec")(
       test("Processor stream consumes valid Users and persists in repo.") {
         for {
-          ref <- Ref.make(List.empty[User])
-          repo = new MockUserRepository(ref)
-          consumers = new MockIngressUserConsumer(data)
+          ref <- Ref.make(List.empty[UserAccount])
+          repo = new MockUserAccountRepository(ref)
+          consumers = new MockIngressUserAccountConsumer(data)
           _ <- UserEventProcessor
             .processStream
             .provideLayer(ZLayer.succeed(consumers) ++ ZLayer.succeed(repo))
@@ -45,9 +45,9 @@ object UserEventProcessorSpec extends ZIOSpecDefault {
       },
       test("Processor stream handles invalid Users with error.") {
         for {
-          ref <- Ref.make(List.empty[User])
-          repo = new MockUserRepository(ref)
-          consumers = new MockIngressUserConsumer(badData)
+          ref <- Ref.make(List.empty[UserAccount])
+          repo = new MockUserAccountRepository(ref)
+          consumers = new MockIngressUserAccountConsumer(badData)
           result <- UserEventProcessor
             .processStream
             .provideLayer(ZLayer.succeed(consumers) ++ ZLayer.succeed(repo))
