@@ -1,4 +1,4 @@
-package repo.postgres
+package repo
 
 import domain.UserAccount
 import io.getquill.jdbczio.Quill
