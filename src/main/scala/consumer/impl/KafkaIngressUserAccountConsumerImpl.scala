@@ -10,6 +10,7 @@ import zio.stream.ZStream
 case class KafkaIngressUserAccountConsumerImpl(consumer: Consumer) extends IngressUserAccountConsumer {
 
   // TODO Throw custom error?
+  // TODO clean up / refactor
   override def consume: ZStream[Any, Throwable, UserAccount] =
     consumer
       .plainStream(Subscription.topics("user-events"), Serde.string, Serde.string)
