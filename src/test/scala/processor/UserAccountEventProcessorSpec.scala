@@ -15,8 +15,7 @@ object UserAccountEventProcessorSpec extends ZIOSpecDefault {
     override def consume: ZStream[Any, Throwable, UserAccount] = ZStream.fromIterable(users)
   }
 
-  // TODO fix InMemoryRepo so I can use that, fix constructor I think?
-  // TODO If I want to use InMemory then I need to pass in a ref, rather than a map
+  // TODO Use InMemoryRepo rather than rewriting this here
   class MockUserAccountRepository(ref: Ref[List[UserAccount]]) extends UserAccountRepository {
     def create(user: UserAccount): ZIO[Any, Throwable, Unit] =
       if (user.name.isBlank || user.id.isBlank) {
@@ -37,8 +36,10 @@ object UserAccountEventProcessorSpec extends ZIOSpecDefault {
           ref <- Ref.make(List.empty[UserAccount])
           repo = new MockUserAccountRepository(ref)
           consumers = new MockIngressUserAccountConsumer(data)
-          _ <- UserEventProcessor
+          _ <- UserEventProcessorStream
             .processStream
+            .take(2)
+            .runCollect
             .provideLayer(ZLayer.succeed(consumers) ++ ZLayer.succeed(repo))
           users <- ref.get
         } yield assertTrue(users == data)
@@ -48,11 +49,13 @@ object UserAccountEventProcessorSpec extends ZIOSpecDefault {
           ref <- Ref.make(List.empty[UserAccount])
           repo = new MockUserAccountRepository(ref)
           consumers = new MockIngressUserAccountConsumer(badData)
-          result <- UserEventProcessor
+          result <- UserEventProcessorStream
             .processStream
+            .take(1)
+            .runCollect
             .provideLayer(ZLayer.succeed(consumers) ++ ZLayer.succeed(repo))
             .either
-        } yield assert(result)(isLeft(equalTo(PersistenceError("Name and/or Id is blank."))))
+        } yield assert(result)(isLeft(equalTo(EventProcessorFail("Error persisting to user account repo: Name and/or Id is blank."))))
       }
     )
 }
