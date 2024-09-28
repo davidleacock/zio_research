@@ -19,7 +19,7 @@ object UserEventProcessorStream {
         repo <- ZIO.service[UserAccountRepository]
       } yield consumer
         .consume
-        .mapError(err => EventProcessorFail(s"Error processing from ingress stream: ${err.getMessage}"))
+        .mapError(err => EventProcessorFail(s"Error processing from ingress stream: ${err.reason}"))
         .mapZIO { user =>
           repo
             .create(user)

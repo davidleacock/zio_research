@@ -1,6 +1,6 @@
 package consumer.impl
 
-import consumer.IngressUserAccountConsumer
+import consumer.{IngressUserAccountConsumer, IngressUserAccountError}
 import domain.UserAccount
 import zio._
 import zio.kafka.consumer.{Consumer, Subscription}
@@ -9,18 +9,17 @@ import zio.stream.ZStream
 
 case class KafkaIngressUserAccountConsumerImpl(consumer: Consumer) extends IngressUserAccountConsumer {
 
-  // TODO Throw custom error?
-  // TODO clean up / refactor
-  override def consume: ZStream[Any, Throwable, UserAccount] =
+  // TODO use configs to read topic
+  override def consume: ZStream[Any, IngressUserAccountError, UserAccount] =
     consumer
       .plainStream(Subscription.topics("user-events"), Serde.string, Serde.string)
       .tap(e => Console.printLine(s"Received record: ${e.value}"))
       .mapZIO { record =>
         ZIO
           .fromEither(UserAccount.decoder.decodeJson(record.value))
-          .mapError(err => new RuntimeException(s"Failed to decode user: $err"))
+          .mapError(err => IngressUserAccountError(s"Failed to create UserAccount: $err"))
       }
-      .tapError(err => Console.printLine(s"Stream error: $err"))
+      .mapError(err => IngressUserAccountError(s"Kafka ingress error: $err"))
 }
 
 object KafkaIngressUserAccountConsumerImpl {
