@@ -4,39 +4,14 @@ import com.dimafeng.testcontainers.KafkaContainer
 import consumer.impl.KafkaIngressUserAccountConsumerImpl
 import domain.UserAccount
 import zio._
-import zio.kafka.consumer.Consumer.AutoOffsetStrategy
-import zio.kafka.consumer.Consumer.OffsetRetrieval.Auto
-import zio.kafka.consumer.{Consumer, ConsumerSettings}
 import zio.test.Assertion._
 import zio.test._
 
-object KafkaIngressUserAccountConsumerImplSpec extends ZIOSpecDefault {
-
-  val kafkaContainerLayer: ZLayer[Any, Throwable, KafkaContainer] =
-    ZLayer.scoped {
-      ZIO.acquireRelease(ZIO.attempt {
-        val container = new KafkaContainer()
-        container.start()
-        container
-      })(container => ZIO.attempt(container.stop()).orDie)
-    }
-
-  val consumerLayer: ZLayer[KafkaContainer with Scope, Throwable, Consumer] =
-    ZLayer.fromZIO {
-      for {
-        kafka <- ZIO.service[KafkaContainer]
-        brokerUrl = kafka.bootstrapServers
-        consumerSettings = ConsumerSettings(List(brokerUrl))
-          .withOffsetRetrieval(Auto(AutoOffsetStrategy.Earliest))
-          .withGroupId("test-group")
-          .withClientId("test-client")
-        consumer <- Consumer.make(consumerSettings)
-      } yield consumer
-    }
+object KafkaIngressUserAccountConsumerImplSpec extends ZIOSpecDefault with TestInfrastructure {
 
   override def spec: Spec[TestEnvironment with Scope, Any] =
     suite("KafkaIngressUserAccountConsumerImpl")(
-      test("will consume valid data from user-event topic and create User") {
+      test("will consume valid data from user-event topic and create UserAccount") {
         ZIO.scoped {
           for {
             kafka <- ZIO.service[KafkaContainer]
@@ -86,18 +61,4 @@ object KafkaIngressUserAccountConsumerImplSpec extends ZIOSpecDefault {
     ).provideLayer(
       kafkaContainerLayer >>> (consumerLayer ++ ZLayer.service[KafkaContainer])
     )
-
-  private def publish(data: String, brokerUrl: String): Unit = {
-    import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
-
-    import java.util.Properties
-    val props = new Properties()
-    props.put("bootstrap.servers", brokerUrl)
-    props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer")
-    props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
-
-    val producer = new KafkaProducer[String, String](props)
-    producer.send(new ProducerRecord[String, String]("user-events", "key", data))
-    producer.close()
-  }
 }
