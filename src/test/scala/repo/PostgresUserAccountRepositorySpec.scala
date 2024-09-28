@@ -1,6 +1,7 @@
 package repo
 
 import domain.UserAccount
+import environment.TestInfrastructure
 import io.getquill.Literal
 import io.getquill.jdbczio.Quill
 import repo.impl.PostgresUserAccountRepositoryLive

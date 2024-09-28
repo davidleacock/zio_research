@@ -2,6 +2,7 @@ package integration
 
 import com.dimafeng.testcontainers.KafkaContainer
 import domain.UserAccount
+import environment.TestInfrastructure
 import processor.UserEventProcessorStream
 import repo.impl.PostgresUserAccountRepositoryLive
 import zio.test.{Spec, TestEnvironment, ZIOSpecDefault, assertTrue}

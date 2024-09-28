@@ -3,6 +3,7 @@ package consumer
 import com.dimafeng.testcontainers.KafkaContainer
 import consumer.impl.KafkaIngressUserAccountConsumerImpl
 import domain.UserAccount
+import environment.TestInfrastructure
 import zio._
 import zio.test.Assertion._
 import zio.test._
@@ -54,7 +55,7 @@ object KafkaIngressUserAccountConsumerImplSpec extends ZIOSpecDefault with TestI
                   .either
               }
           } yield assert(result)(
-            isLeft(hasField("message", _.getMessage, containsString("Failed to decode user")))
+            isLeft(hasField("message", _.reason, containsString("Failed to decode user")))
           )
         }
       }

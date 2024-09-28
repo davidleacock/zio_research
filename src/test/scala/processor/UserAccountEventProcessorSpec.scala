@@ -1,8 +1,7 @@
 package processor
 
-import consumer.IngressUserAccountConsumer
+import consumer.{IngressUserAccountConsumer, IngressUserAccountError}
 import domain.UserAccount
-import domain.UserError.PersistenceError
 import repo.UserAccountRepository
 import zio._
 import zio.stream.ZStream
@@ -12,10 +11,9 @@ import zio.test._
 object UserAccountEventProcessorSpec extends ZIOSpecDefault {
 
   class MockIngressUserAccountConsumer(users: List[UserAccount]) extends IngressUserAccountConsumer {
-    override def consume: ZStream[Any, Throwable, UserAccount] = ZStream.fromIterable(users)
+    override def consume: ZStream[Any, IngressUserAccountError, UserAccount] = ZStream.fromIterable(users)
   }
 
-  // TODO Use InMemoryRepo rather than rewriting this here
   class MockUserAccountRepository(ref: Ref[List[UserAccount]]) extends UserAccountRepository {
     def create(user: UserAccount): ZIO[Any, Throwable, Unit] =
       if (user.name.isBlank || user.id.isBlank) {

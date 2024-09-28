@@ -1,3 +1,5 @@
+package environment
+
 import com.dimafeng.testcontainers.KafkaContainer
 import consumer.IngressUserAccountConsumer
 import consumer.impl.KafkaIngressUserAccountConsumerImpl
