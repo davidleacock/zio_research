@@ -13,9 +13,9 @@ object UserAccount {
   implicit val codec: BinaryCodec[UserAccount] = JsonCodec.schemaBasedBinaryCodec(schema)
 }
 
-sealed trait UserError extends Throwable
-object UserError {
-  case class InvalidDataError(message: String) extends UserError
-  case class PersistenceError(message: String) extends UserError
-  case class ConsumerError(cause: Throwable) extends UserError
-}
+//sealed trait UserError extends Throwable
+//object UserError {
+//  case class InvalidDataError(message: String) extends UserError
+//  case class PersistenceError(message: String) extends UserError
+//  case class ConsumerError(cause: Throwable) extends UserError
+//}

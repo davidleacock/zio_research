@@ -19,6 +19,7 @@ object UserEventProcessorStream {
         repo <- ZIO.service[UserAccountRepository]
       } yield consumer
         .consume
+        .tap(account => ZIO.logInfo(s"Processing $account"))
         .mapError(err => EventProcessorFail(s"Error processing from ingress stream: ${err.reason}"))
         .mapZIO { user =>
           repo
